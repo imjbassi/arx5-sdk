@@ -11,7 +11,6 @@ from typing import Any, cast
 import arx5_interface as arx5
 import zmq
 import click
-import sys
 import traceback
 
 
@@ -75,7 +74,7 @@ class Arx5Server:
                     continue
             except KeyboardInterrupt:
                 break
-            except Exception as e:
+            except Exception:
                 exception_str = echo_exception()
                 print(f"Error: {exception_str}")
                 continue
@@ -234,7 +233,7 @@ class Arx5Server:
                     raise ValueError(f"Unknown message type: {msg['cmd']}")
             except KeyboardInterrupt:
                 break
-            except Exception as e:
+            except Exception:
                 exception_str = echo_exception()
                 self.socket.send_pyobj(
                     {"cmd": msg["cmd"], "data": f"ERROR: {exception_str}"}

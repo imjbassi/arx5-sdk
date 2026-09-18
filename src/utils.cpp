@@ -65,20 +65,6 @@ Eigen::VectorXd MovingAverageXd::filter(Eigen::VectorXd new_data)
     return window_sum_ / window_size_;
 }
 
-// std::string vec2str(const Eigen::VectorXd& vec, int precision) {
-//   std::string str = "[";
-//   for (int i = 0; i < vec.size(); i++) {
-//     char buffer[50];
-//     std::sprintf(buffer, "%.*f", precision, vec(i));
-//     str += buffer;
-//     if (i < vec.size() - 1) {
-//       str += ", ";
-//     }
-//   }
-//   str += "]";
-//   return str;
-// }
-
 JointStateInterpolator::JointStateInterpolator(int dof, std::string method)
 {
     if (method != "linear" && method != "cubic")

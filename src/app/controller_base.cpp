@@ -2,10 +2,21 @@
 #include "app/common.h"
 #include "utils.h"
 #include <array>
+#include <cmath>
 #include <stdexcept>
 #include <sys/syscall.h>
 #include <sys/types.h>
 using namespace arx;
+
+namespace
+{
+// Extra margin (rad) allowed beyond the configured joint limits before a position reading/command
+// is treated as a sensor fault rather than a legitimate near-limit value.
+constexpr double kJointPosSanityMarginRad = M_PI;
+// A torque reading this many times over joint_torque_max is treated as a sensor fault rather than
+// a legitimate (if aggressive) command.
+constexpr double kJointTorqueSanityFactor = 100.0;
+} // namespace
 
 Arx5ControllerBase::Arx5ControllerBase(RobotConfig robot_config, ControllerConfig controller_config,
                                        std::string interface_name)
@@ -294,8 +305,8 @@ void Arx5ControllerBase::check_joint_state_sanity_()
 
     for (int i = 0; i < robot_config_.joint_dof; ++i)
     {
-        if (std::abs(joint_state_.pos[i]) > robot_config_.joint_pos_max[i] + 3.14 ||
-            std::abs(joint_state_.pos[i]) < robot_config_.joint_pos_min[i] - 3.14)
+        if (std::abs(joint_state_.pos[i]) > robot_config_.joint_pos_max[i] + kJointPosSanityMarginRad ||
+            std::abs(joint_state_.pos[i]) < robot_config_.joint_pos_min[i] - kJointPosSanityMarginRad)
         {
             logger_->error("Joint {} pos data error: {:.3f}. Please restart the program.", i, joint_state_.pos[i]);
             enter_emergency_state_();
@@ -305,15 +316,15 @@ void Arx5ControllerBase::check_joint_state_sanity_()
         {
             std::lock_guard<std::mutex> guard(cmd_mutex_);
             JointState interpolator_cmd = interpolator_.interpolate(get_timestamp());
-            if (std::abs(interpolator_cmd.pos[i]) > robot_config_.joint_pos_max[i] + 3.14 ||
-                std::abs(interpolator_cmd.pos[i]) < robot_config_.joint_pos_min[i] - 3.14)
+            if (std::abs(interpolator_cmd.pos[i]) > robot_config_.joint_pos_max[i] + kJointPosSanityMarginRad ||
+                std::abs(interpolator_cmd.pos[i]) < robot_config_.joint_pos_min[i] - kJointPosSanityMarginRad)
             {
                 logger_->error("Joint {} interpolated command data error: {:.3f}. Please restart the program.", i,
                                interpolator_cmd.pos[i]);
                 enter_emergency_state_();
             }
         }
-        if (std::abs(joint_state_.torque[i]) > 100 * robot_config_.joint_torque_max[i])
+        if (std::abs(joint_state_.torque[i]) > kJointTorqueSanityFactor * robot_config_.joint_torque_max[i])
         {
             logger_->error("Joint {} torque data error: {:.3f}. Please restart the program.", i,
                            joint_state_.torque[i]);
